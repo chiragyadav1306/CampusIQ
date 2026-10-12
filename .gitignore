@@ -1,0 +1,22 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Local database
+db.sqlite3
+
+# macOS
+.DS_Store
