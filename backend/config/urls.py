@@ -56,6 +56,13 @@ urlpatterns = [
     include("analytics.urls")
     ),
 
+
+    path(
+        "api/lost-found/",
+        include("lost_found.urls")
+    ),
+
+
     path(
     "api/ai/",
     include("ai_assistant.urls")

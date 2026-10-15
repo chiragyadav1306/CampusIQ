@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8003"
+).replace(/\/+$/, "");
+
 function App() {
+
+  const [myClaims, setMyClaims] = useState([]);
+const [showMyClaims, setShowMyClaims] = useState(false);
 
   // ==============================
   // LOGIN
@@ -74,6 +81,30 @@ const [aiComplaintReason, setAiComplaintReason] =
   const [adminComplaints, setAdminComplaints] =
     useState([]);
 
+
+  // ==============================
+  // LOST & FOUND
+  // ==============================
+
+  const [lostFoundItems, setLostFoundItems] = useState([]);
+  const [showLostFound, setShowLostFound] = useState(false);
+  const [showLostFoundForm, setShowLostFoundForm] = useState(false);
+  const [lostFoundSearch, setLostFoundSearch] = useState("");
+  const [lostFoundType, setLostFoundType] = useState("all");
+  const [lostFoundCategory, setLostFoundCategory] = useState("all");
+
+  const [lostFoundForm, setLostFoundForm] = useState({
+    title: "",
+    report_type: "lost",
+    category: "other",
+    description: "",
+    location: "",
+    date_lost_found: "",
+    photo: null,
+  });
+
+
+
   const [showAdminComplaints, setShowAdminComplaints] =
     useState(false);
 
@@ -93,14 +124,19 @@ const [facultyMembers, setFacultyMembers] =
 const [analytics, setAnalytics] = useState(null);
 
 const [showAnalytics, setShowAnalytics] =
-  useState(false);  
-  
-  
+  useState(false);
+
+
   const [aiMessage, setAiMessage] = useState("");
 const [aiReply, setAiReply] = useState("");
 const [aiLoading, setAiLoading] = useState(false);
 const [showAIAssistant, setShowAIAssistant] = useState(false);
+
 const [aiMessages, setAiMessages] = useState([]);
+
+
+
+
 
 const askAIAssistant = async () => {
 
@@ -125,7 +161,7 @@ const askAIAssistant = async () => {
   try {
 
     const response = await fetch(
-      "http://127.0.0.1:8003/api/ai/",
+      `${API_BASE_URL}/api/ai/`,
       {
         method: "POST",
 
@@ -259,7 +295,7 @@ const askAIAssistant = async () => {
   const unreadNotificationCount =
   notifications.filter(
     (notification) => !notification.is_read
-  ).length;  
+  ).length;
 
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -273,7 +309,7 @@ const askAIAssistant = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/events/"
+        `${API_BASE_URL}/api/events/`
       );
 
       if (!response.ok) {
@@ -318,7 +354,7 @@ const askAIAssistant = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/events/register/",
+        `${API_BASE_URL}/api/events/register/`,
         {
           method: "POST",
 
@@ -390,7 +426,7 @@ const askAIAssistant = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/complaints/",
+        `${API_BASE_URL}/api/complaints/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -432,6 +468,241 @@ const askAIAssistant = async () => {
       );
     }
   };
+
+
+
+const loadLostFound = async () => {
+  // Open the section immediately so the button responds even if the API fails.
+  setShowLostFound(true);
+  setShowLostFoundForm(false);
+  setShowMyClaims(false);
+  setShowEvents(false);
+  setShowComplaints(false);
+  setShowComplaintForm(false);
+  setShowAdminComplaints(false);
+  setShowFacultyComplaints(false);
+  setShowEmergency(false);
+  setShowAdminEmergency(false);
+  setShowAnalytics(false);
+  setShowAIAssistant(false);
+  setShowNotifications(false);
+  setMessage("");
+
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    setMessage("Please login again to load Lost & Found reports.");
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams();
+    if (lostFoundType !== "all") params.append("type", lostFoundType);
+    if (lostFoundCategory !== "all") params.append("category", lostFoundCategory);
+    if (lostFoundSearch.trim()) params.append("search", lostFoundSearch.trim());
+
+    const query = params.toString();
+    const url = `${API_BASE_URL}/api/lost-found/${query ? `?${query}` : ""}`;
+    console.log("Lost & Found request:", url);
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = data.detail || data.error || "Failed to load Lost & Found reports.";
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+
+    setLostFoundItems(Array.isArray(data) ? data : (data.results || []));
+  } catch (error) {
+    console.error("Lost & Found error:", error);
+    setMessage(`Lost & Found could not load: ${error.message}`);
+  }
+};
+
+
+const loadMyClaims = async () => {
+  const token = localStorage.getItem("access_token");
+
+  if (!token) {
+    setMessage("Please login again.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/lost-found/my-claims/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Failed to load your claims."
+      );
+    }
+
+    setMyClaims(data);
+    setShowMyClaims(true);
+    setShowLostFound(false);
+    setShowLostFoundForm(false);
+    setShowEvents(false);
+    setShowComplaints(false);
+    setShowComplaintForm(false);
+    setShowEmergency(false);
+    setShowAdminComplaints(false);
+    setShowFacultyComplaints(false);
+    setShowAnalytics(false);
+    setShowAIAssistant(false);
+  } catch (error) {
+    console.error("My Claims error:", error);
+    setMessage(error.message);
+  }
+};
+
+
+
+const handleLostFoundChange = (e) => {
+  const { name, value, files } = e.target;
+
+  setLostFoundForm((prev) => ({
+    ...prev,
+    [name]: name === "photo" ? files?.[0] || null : value,
+  }));
+};
+
+const submitLostFound = async (e) => {
+  e.preventDefault();
+
+  // Validate here so the user always gets a visible message instead of
+  // the browser silently blocking submission on a required field.
+  const requiredFields = [
+    ["title", "Please enter the item title."],
+    ["report_type", "Please select whether the item was lost or found."],
+    ["category", "Please select a category."],
+    ["description", "Please describe the item."],
+    ["location", "Please enter the location."],
+    ["date_lost_found", "Please select the date."],
+  ];
+  const missingField = requiredFields.find(([key]) => !String(lostFoundForm[key] || "").trim());
+  if (missingField) {
+    alert(missingField[1]);
+    return;
+  }
+
+  const token = localStorage.getItem("access_token");
+
+  if (!token) {
+    alert("Please login again before submitting a report.");
+    setMessage("Please login again.");
+    return;
+  }
+
+  console.log("Submitting Lost & Found report", {
+    title: lostFoundForm.title,
+    report_type: lostFoundForm.report_type,
+    category: lostFoundForm.category,
+  });
+
+  try {
+    const formData = new FormData();
+
+    Object.entries(lostFoundForm).forEach(([key, value]) => {
+      if (value !== null && value !== "") {
+        formData.append(key, value);
+      }
+    });
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/lost-found/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errorMessage =
+        typeof data === "object"
+          ? Object.entries(data)
+              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value) : value}`)
+              .join("\n")
+          : "Failed to submit report.";
+
+      throw new Error(errorMessage || "Failed to submit report.");
+    }
+
+    alert("Lost & Found report submitted successfully!");
+    setMessage("Lost & Found report submitted successfully!");
+
+    setLostFoundForm({
+      title: "",
+      report_type: "lost",
+      category: "other",
+      description: "",
+      location: "",
+      date_lost_found: "",
+      photo: null,
+    });
+
+    setShowLostFoundForm(false);
+    await loadLostFound();
+  } catch (error) {
+    console.error("Submit Lost & Found error:", error);
+    setMessage(error.message || "Failed to submit Lost & Found report.");
+    alert(`Report was not submitted: ${error.message || "Please check the server and try again."}`);
+  }
+};
+
+
+const claimLostFoundItem = async (itemId) => {
+  const token = localStorage.getItem("access_token");
+
+  if (!token) {
+    setMessage("Please login again.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/lost-found/${itemId}/claim/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Unable to claim this item."
+      );
+    }
+
+    setMessage(data.message || "Item claimed successfully.");
+    await loadLostFound();
+  } catch (error) {
+    console.error("Claim item error:", error);
+    setMessage(error.message);
+  }
+};
+
+
+
 
   // =====================================================
   // COMPLAINT FORM CHANGE
@@ -478,7 +749,7 @@ const analyzeComplaintWithAI = async () => {
   try {
 
     const response = await fetch(
-      "http://127.0.0.1:8003/api/complaints/ai-analyze/",
+      `${API_BASE_URL}/api/complaints/ai-analyze/`,
       {
         method: "POST",
 
@@ -536,7 +807,7 @@ const analyzeComplaintWithAI = async () => {
     setAiComplaintLoading(false);
 
   }
-}; 
+};
 
   // =====================================================
   // STUDENT - SUBMIT COMPLAINT
@@ -557,7 +828,7 @@ const analyzeComplaintWithAI = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/complaints/",
+        `${API_BASE_URL}/api/complaints/`,
         {
           method: "POST",
 
@@ -632,7 +903,7 @@ const analyzeComplaintWithAI = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/emergency/",
+        `${API_BASE_URL}/api/emergency/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -710,7 +981,7 @@ const analyzeComplaintWithAI = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/emergency/",
+        `${API_BASE_URL}/api/emergency/`,
         {
           method: "POST",
 
@@ -783,7 +1054,7 @@ const analyzeComplaintWithAI = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/emergency/admin/",
+        `${API_BASE_URL}/api/emergency/admin/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -848,7 +1119,7 @@ const analyzeComplaintWithAI = async () => {
     try {
 
       const response = await fetch(
-        `http://127.0.0.1:8003/api/emergency/admin/${reportId}/`,
+        `${API_BASE_URL}/api/emergency/admin/${reportId}/`,
         {
           method: "PATCH",
           headers: {
@@ -918,7 +1189,7 @@ const loadFacultyMembers = async () => {
   try {
 
     const response = await fetch(
-      "http://127.0.0.1:8003/api/users/faculty/",
+      `${API_BASE_URL}/api/users/faculty/`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -974,7 +1245,7 @@ const loadFacultyMembers = async () => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/complaints/admin/",
+        `${API_BASE_URL}/api/complaints/admin/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1040,7 +1311,7 @@ const loadAnalytics = async () => {
   try {
 
     const response = await fetch(
-      "http://127.0.0.1:8003/api/analytics/",
+      `${API_BASE_URL}/api/analytics/`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1106,7 +1377,7 @@ const assignComplaintToFaculty = async (
   try {
 
     const response = await fetch(
-      `http://127.0.0.1:8003/api/complaints/admin/${complaintId}/`,
+      `${API_BASE_URL}/api/complaints/admin/${complaintId}/`,
       {
         method: "PATCH",
 
@@ -1185,7 +1456,7 @@ const assignComplaintToFaculty = async (
     try {
 
       const response = await fetch(
-        `http://127.0.0.1:8003/api/complaints/admin/${complaintId}/`,
+        `${API_BASE_URL}/api/complaints/admin/${complaintId}/`,
         {
           method: "PATCH",
 
@@ -1251,7 +1522,7 @@ const assignComplaintToFaculty = async (
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8003/api/complaints/faculty/${complaintId}/`,
+      `${API_BASE_URL}/api/complaints/faculty/${complaintId}/`,
       {
         method: "PATCH",
         headers: {
@@ -1320,7 +1591,7 @@ const assignComplaintToFaculty = async (
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/complaints/faculty/",
+        `${API_BASE_URL}/api/complaints/faculty/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1384,7 +1655,7 @@ const assignComplaintToFaculty = async (
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/notifications/",
+        `${API_BASE_URL}/api/notifications/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1432,7 +1703,7 @@ const assignComplaintToFaculty = async (
     try {
 
       const response = await fetch(
-        `http://127.0.0.1:8003/api/notifications/${notificationId}/read/`,
+        `${API_BASE_URL}/api/notifications/${notificationId}/read/`,
         {
           method: "PATCH",
           headers: {
@@ -1485,7 +1756,7 @@ const assignComplaintToFaculty = async (
 
         <h2>🔔 Notifications</h2>
 
-      
+
 {unreadNotificationCount > 0 && (
   <button
     onClick={markAllNotificationsRead}
@@ -1561,7 +1832,7 @@ const assignComplaintToFaculty = async (
     }
 
     fetch(
-      "http://127.0.0.1:8003/api/users/me/",
+      `${API_BASE_URL}/api/users/me/`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1614,7 +1885,7 @@ useEffect(() => {
   const fetchStudentNotifications = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8003/api/notifications/",
+        `${API_BASE_URL}/api/notifications/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1643,7 +1914,7 @@ useEffect(() => {
   return () => clearInterval(intervalId);
 }, [user]);
 
-  
+
   // =====================================================
   // LOGIN
   // =====================================================
@@ -1657,7 +1928,7 @@ useEffect(() => {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8003/api/token/",
+        `${API_BASE_URL}/api/token/`,
         {
           method: "POST",
 
@@ -1695,7 +1966,7 @@ useEffect(() => {
       );
 
       const userResponse = await fetch(
-        "http://127.0.0.1:8003/api/users/me/",
+        `${API_BASE_URL}/api/users/me/`,
         {
           headers: {
             Authorization: `Bearer ${data.access}`,
@@ -1732,15 +2003,24 @@ useEffect(() => {
 
   const handleLogout = () => {
 
+
+localStorage.removeItem("campusiq_ai_messages");
+
+setAiMessages([]);
+setAiMessage("");
+setAiReply("");
+setShowAIAssistant(false);
+
+
     localStorage.removeItem(
       "access_token"
     );
 
-    localStorage.removeItem(
-      "refresh_token"
-    );
 
-    setUser(null);
+localStorage.removeItem("refresh_token");
+
+setUser(null);
+
 
     setUsername("");
     setPassword("");
@@ -3302,7 +3582,7 @@ useEffect(() => {
     </div>
 
   </div>
-)} 
+)}
 
             <div>
 
@@ -3696,6 +3976,21 @@ useEffect(() => {
             >
               Complaints
             </button>
+
+
+<button
+  onClick={loadLostFound}
+  className="sidebar-btn"
+>
+  Lost & Found
+</button>
+
+<button
+  onClick={loadMyClaims}
+  className="sidebar-btn"
+>
+  My Claims
+</button>
 
             <button
               onClick={loadEmergencyReports}
@@ -4166,7 +4461,7 @@ useEffect(() => {
   {aiComplaintLoading
     ? "🤖 Analyzing..."
     : "🤖 Analyze with AI"}
-</button>  
+</button>
 
 
 {aiComplaintReason && (
@@ -4246,218 +4541,367 @@ useEffect(() => {
           )}
 
 
-          {/* EVENTS */}
 
-          {showEvents && (
+{/* EVENTS TABLE */}
+{showEvents && (
+  <section className="events-section data-section">
+    <div className="section-header table-section-header">
+      <div>
+        <span className="table-eyebrow">CAMPUS ACTIVITIES</span>
+        <h2>Upcoming Events</h2>
+        <p>Explore and register for campus events.</p>
+      </div>
 
-            <section className="events-section">
+      <button
+        type="button"
+        className="close-events"
+        onClick={() => setShowEvents(false)}
+      >
+        Close
+      </button>
+    </div>
 
-              <div className="section-header">
+    <div className="table-summary">
+      <div>
+        <span className="summary-label">Total Events</span>
+        <strong>{events.length}</strong>
+      </div>
+      <div>
+        <span className="summary-label">Registered</span>
+        <strong>{registeredEvents.length}</strong>
+      </div>
+    </div>
 
-                <h2>
-                  Upcoming Events
-                </h2>
+    {events.length === 0 ? (
+      <div className="table-empty">
+        <span>📅</span>
+        <h3>No events available</h3>
+        <p>New campus events will appear here.</p>
+      </div>
+    ) : (
+      <div className="table-scroll">
+        <table className="campus-data-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Venue</th>
+              <th>Organizer</th>
+              <th>Action</th>
+            </tr>
+          </thead>
 
-                <button
-                  className="close-events"
-                  onClick={() =>
-                    setShowEvents(false)
-                  }
-                >
-                  Close
-                </button>
+          <tbody>
+            {events.map((event) => {
+              const isRegistered = registeredEvents.includes(event.id);
 
-              </div>
-
-
-              <div className="events-grid">
-
-                {events.length === 0 ? (
-
-                  <p>
-                    No upcoming events.
-                  </p>
-
-                ) : (
-
-                  events.map((event) => (
-
-                    <div
-                      className="event-card"
-                      key={event.id}
-                    >
-
-                      <div className="event-icon">
+              return (
+                <tr key={event.id}>
+                  <td>
+                    <div className="table-primary">
+                      <span className="table-avatar event-avatar">
                         📅
+                      </span>
+                      <div>
+                        <strong>{event.title || "Untitled event"}</strong>
+                        <small>{event.description || "No description"}</small>
                       </div>
-
-                      <h3>
-                        {event.title}
-                      </h3>
-
-                      <p>
-                        {event.description}
-                      </p>
-
-                      <div className="event-info">
-
-                        <span>
-                          📅 {event.date}
-                        </span>
-
-                        <span>
-                          ⏰ {event.time}
-                        </span>
-
-                        <span>
-                          📍 {event.venue}
-                        </span>
-
-                        <span>
-                          👤 {event.organizer}
-                        </span>
-
-                      </div>
-
-
-                      <button
-                        className="register-button"
-                        onClick={() =>
-                          registerForEvent(
-                            event.id
-                          )
-                        }
-                        disabled={
-                          registeredEvents.includes(
-                            event.id
-                          )
-                        }
-                      >
-
-                        {registeredEvents.includes(
-                          event.id
-                        )
-                          ? "Registered ✓"
-                          : "Register"}
-
-                      </button>
-
                     </div>
+                  </td>
 
-                  ))
+                  <td>{event.date || "—"}</td>
+                  <td>{event.time || "—"}</td>
+                  <td>{event.venue || "—"}</td>
+                  <td>{event.organizer || "—"}</td>
 
-                )}
-
-              </div>
-
-            </section>
-
-          )}
-
-
-          {/* MY COMPLAINTS */}
-
-          {showComplaints && (
-
-            <section className="complaint-section">
-
-              <div className="section-header">
-
-                <h2>
-                  My Complaints
-                </h2>
-
-                <button
-                  className="close-events"
-                  onClick={() =>
-                    setShowComplaints(false)
-                  }
-                >
-                  Close
-                </button>
-
-              </div>
+                  <td>
+                    <button
+                      type="button"
+                      className={`table-action ${
+                        isRegistered ? "action-done" : ""
+                      }`}
+                      disabled={isRegistered}
+                      onClick={() => registerForEvent(event.id)}
+                    >
+                      {isRegistered ? "Registered ✓" : "Register"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+)}
 
 
-              {complaints.length === 0 ? (
-
-                <p>
-                  You have not submitted
-                  any complaints yet.
-                </p>
-
-              ) : (
-
-                <div className="complaints-list">
-
-                  {complaints.map(
-                    (complaint) => (
-
-                      <div
-                        className="complaint-card"
-                        key={complaint.id}
-                      >
-
-                        <div className="complaint-card-header">
-
-                          <h3>
-                            {complaint.title}
-                          </h3>
-
-                          <span
-                            className={`status ${complaint.status}`}
-                          >
-                            {complaint.status}
-                          </span>
-
-                        </div>
 
 
-                        <p>
-                          {complaint.description}
-                        </p>
+{/* MY COMPLAINTS TABLE */}
+{showComplaints && (
+  <section className="complaint-section data-section">
+    <div className="section-header table-section-header">
+      <div>
+        <span className="table-eyebrow">STUDENT SUPPORT</span>
+        <h2>My Complaints</h2>
+        <p>Track your submitted complaints and their status.</p>
+      </div>
+
+      <button
+        type="button"
+        className="close-events"
+        onClick={() => setShowComplaints(false)}
+      >
+        Close
+      </button>
+    </div>
+
+    <div className="table-summary">
+      <div>
+        <span className="summary-label">Total Complaints</span>
+        <strong>{complaints.length}</strong>
+      </div>
+      <div>
+        <span className="summary-label">Open</span>
+        <strong>
+          {complaints.filter(
+            (item) => String(item.status).toLowerCase() === "open"
+          ).length}
+        </strong>
+      </div>
+    </div>
+
+    {complaints.length === 0 ? (
+      <div className="table-empty">
+        <span>📋</span>
+        <h3>No complaints yet</h3>
+        <p>Your submitted complaints will appear here.</p>
+      </div>
+    ) : (
+      <div className="table-scroll">
+        <table className="campus-data-table">
+          <thead>
+            <tr>
+              <th>Complaint</th>
+              <th>Category</th>
+              <th>Priority</th>
+              <th>Location</th>
+              <th>Submitted</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {complaints.map((complaint) => (
+              <tr key={complaint.id}>
+                <td>
+                  <div className="table-primary">
+                    <span className="table-avatar complaint-avatar">
+                      📋
+                    </span>
+                    <div>
+                      <strong>
+                        {complaint.title || "Untitled complaint"}
+                      </strong>
+                      <small>
+                        {complaint.description || "No description"}
+                      </small>
+                    </div>
+                  </div>
+                </td>
+
+                <td>{complaint.category || "—"}</td>
+
+                <td>
+                  <span
+                    className={`table-badge priority-${String(
+                      complaint.priority || "normal"
+                    ).toLowerCase()}`}
+                  >
+                    {complaint.priority || "Normal"}
+                  </span>
+                </td>
+
+                <td>{complaint.location || "Not provided"}</td>
+
+                <td>
+                  {complaint.created_at
+                    ? new Date(complaint.created_at).toLocaleDateString()
+                    : "—"}
+                </td>
+
+                <td>
+                  <span
+                    className={`table-badge status-${String(
+                      complaint.status || "pending"
+                    ).toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    {complaint.status || "Pending"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+)}
 
 
-                        <div className="complaint-details">
+{/* LOST & FOUND REPORTS TABLE */}
+{lostFoundItems.length === 0 ? (
+  <div className="table-empty">
+    <span>🔎</span>
+    <h3>No reports found</h3>
+    <p>Try changing your search or filters.</p>
+  </div>
+) : (
+  <div className="table-scroll">
+    <table className="campus-data-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Type</th>
+          <th>Category</th>
+          <th>Location</th>
+          <th>Date</th>
+          <th>Reported By</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
 
-                          <span>
-                            📂{" "}
-                            {complaint.category}
-                          </span>
-
-                          <span>
-                            ⚡{" "}
-                            {complaint.priority}
-                          </span>
-
-                          <span>
-                            📍{" "}
-                            {complaint.location ||
-                              "Not provided"}
-                          </span>
-
-                        </div>
-
-
-                        <small>
-                          Submitted:{" "}
-                          {new Date(
-                            complaint.created_at
-                          ).toLocaleString()}
-                        </small>
-
-                      </div>
-
-                    )
-                  )}
-
+      <tbody>
+        {lostFoundItems.map((item) => (
+          <tr key={item.id}>
+            <td>
+              <div className="table-primary">
+                <span className="table-avatar lost-avatar">
+                  {item.report_type === "lost" ? "🔍" : "🎒"}
+                </span>
+                <div>
+                  <strong>{item.title || "Untitled item"}</strong>
+                  <small>{item.description || "No description"}</small>
                 </div>
+              </div>
+            </td>
 
+            <td>
+              <span
+                className={`table-badge ${
+                  item.report_type === "lost"
+                    ? "type-lost"
+                    : "type-found"
+                }`}
+              >
+                {item.report_type || "—"}
+              </span>
+            </td>
+
+            <td>
+              {(item.category || "other").replace(/_/g, " ")}
+            </td>
+
+            <td>{item.location || "Not provided"}</td>
+
+            <td>{item.date_lost_found || "—"}</td>
+
+            <td>{item.reporter_username || "—"}</td>
+
+            <td>
+              <span
+                className={`table-badge status-${String(
+                  item.status || "open"
+                ).toLowerCase()}`}
+              >
+                {item.status || "Open"}
+              </span>
+            </td>
+
+            <td>
+              {item.report_type === "found" &&
+              item.status === "open" &&
+              item.reporter_username !== user?.username ? (
+                <button
+                  type="button"
+                  className="table-action"
+                  onClick={() => claimLostFoundItem(item.id)}
+                >
+                  Claim Item
+                </button>
+              ) : (
+                <span className="table-no-action">—</span>
               )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
 
-            </section>
 
-          )}
+
+{/* MY CLAIMS — kept outside the Lost & Found conditional */}
+{showMyClaims && (
+  <div className="dashboard-section">
+    <h2>My Claims</h2>
+    <p>Items you have claimed from Lost & Found.</p>
+
+    {myClaims.length === 0 ? (
+      <p>You have not claimed any items yet.</p>
+    ) : (
+      <div className="lost-found-list">
+        {myClaims.map((item) => (
+          <div
+            key={item.id}
+            className="lost-found-card"
+          >
+            <h3>{item.title}</h3>
+
+            <p>
+              <strong>Category:</strong>{" "}
+              {item.category}
+            </p>
+
+            <p>
+              <strong>Description:</strong>{" "}
+              {item.description}
+            </p>
+
+            <p>
+              <strong>Location:</strong>{" "}
+              {item.location}
+            </p>
+
+            <p>
+              <strong>Reported by:</strong>{" "}
+              {item.reporter_username}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              {item.status}
+            </p>
+
+            <p>
+              <strong>Claimed on:</strong>{" "}
+              {item.claimed_at
+                ? new Date(item.claimed_at).toLocaleString()
+                : "Not available"}
+            </p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+
+
 
 
           {/* =====================================================
