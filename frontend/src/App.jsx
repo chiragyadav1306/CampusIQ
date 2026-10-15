@@ -4753,6 +4753,120 @@ setUser(null);
 
 
 {/* LOST & FOUND REPORTS TABLE */}
+
+
+{showLostFound && (
+  <section className="dashboard-section">
+    <div className="section-header table-section-header">
+      <div>
+        <span className="table-eyebrow">CAMPUS COMMUNITY</span>
+        <h2>Lost & Found</h2>
+        <p>Report a lost item or help someone find their belongings.</p>
+      </div>
+
+      <button
+        type="button"
+        className="table-action"
+        onClick={() => setShowLostFoundForm(!showLostFoundForm)}
+      >
+        {showLostFoundForm ? "Cancel" : "+ Add Item"}
+      </button>
+    </div>
+
+    {showLostFoundForm && (
+      <form
+        className="complaint-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitLostFound();
+        }}
+      >
+        <label>
+          Item Name *
+          <input
+            name="title"
+            value={lostFoundForm.title}
+            onChange={handleLostFoundChange}
+            required
+            placeholder="e.g. Black wallet"
+          />
+        </label>
+
+        <label>
+          Report Type *
+          <select
+            name="report_type"
+            value={lostFoundForm.report_type}
+            onChange={handleLostFoundChange}
+            required
+          >
+            <option value="lost">I lost an item</option>
+            <option value="found">I found an item</option>
+          </select>
+        </label>
+
+        <label>
+          Category *
+          <input
+            name="category"
+            value={lostFoundForm.category}
+            onChange={handleLostFoundChange}
+            required
+            placeholder="e.g. electronics"
+          />
+        </label>
+
+        <label>
+          Description *
+          <textarea
+            name="description"
+            value={lostFoundForm.description}
+            onChange={handleLostFoundChange}
+            required
+            placeholder="Describe the item"
+          />
+        </label>
+
+        <label>
+          Location *
+          <input
+            name="location"
+            value={lostFoundForm.location}
+            onChange={handleLostFoundChange}
+            required
+            placeholder="Where was it lost or found?"
+          />
+        </label>
+
+        <label>
+          Date *
+          <input
+            type="date"
+            name="date_lost_found"
+            value={lostFoundForm.date_lost_found}
+            onChange={handleLostFoundChange}
+            required
+          />
+        </label>
+
+        <label>
+          Photo (optional)
+          <input
+            type="file"
+            name="photo"
+            accept="image/*"
+            onChange={handleLostFoundChange}
+          />
+        </label>
+
+        <button type="submit" className="table-action">
+          Submit Report
+        </button>
+      </form>
+    )}
+  </section>
+)}
+
 {lostFoundItems.length === 0 ? (
   <div className="table-empty">
     <span>🔎</span>
