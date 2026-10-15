@@ -54,6 +54,21 @@ class ComplaintListCreateView(APIView):
                 student=request.user
             )
 
+            from users.models import User
+
+            admins = User.objects.filter(role="admin")
+
+            for admin in admins:
+                create_notification(
+                    user=admin,
+                    title="New Complaint Registered",
+                    message=(
+                        f"{request.user.username} registered "
+                        f"complaint #{complaint.id}."
+                    ),
+                    notification_type="complaint"
+                )
+
             response_serializer = ComplaintSerializer(
                 complaint
             )
@@ -197,7 +212,27 @@ class AdminComplaintUpdateView(APIView):
 
         if serializer.is_valid():
 
+            old_status = complaint.status
             updated_complaint = serializer.save()
+
+            # ==========================================
+            # NOTIFY STUDENT WHEN STATUS CHANGES
+            # ==========================================
+
+            if (
+                "status" in update_data
+                and updated_complaint.status != old_status
+            ):
+                create_notification(
+                    user=updated_complaint.student,
+                    title="Complaint Status Updated",
+                    message=(
+                        f"Your complaint #{updated_complaint.id} "
+                        f"status has changed to "
+                        f"{updated_complaint.get_status_display()}."
+                    ),
+                    notification_type="complaint"
+                )
 
             # ==========================================
             # NOTIFY FACULTY
